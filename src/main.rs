@@ -103,12 +103,12 @@ async fn product_router(
     .unwrap_or_else(|e| default_error_response(e))
 }
 
-const DEFAULT_DEPLOYMENT_URL: &str = "localhost:3000";
+let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
 
 #[tokio::main]
 async fn main() {
-    let deploy_url =
-        std::env::var("DEPLOYMENT_URL").unwrap_or_else(|_| DEFAULT_DEPLOYMENT_URL.to_string());
+    let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
+    let deploy_url = format!("0.0.0.0:{}", port);
 
     let description: Value = json!({
         "name": env!("CARGO_PKG_NAME"),
@@ -118,22 +118,19 @@ async fn main() {
         "repository": env!("CARGO_PKG_REPOSITORY"),
         "license": env!("CARGO_PKG_LICENSE"),
         "usage": {
-            "search_api": format!("{deploy_url}/search/{{product_name}}"),
-            "product_api": format!("{deploy_url}/product/{{product_link_argument}}"),
+            "search_api": format!("{}/search/{{product_name}}", deploy_url),
+            "product_api": format!("{}/product/{{product_link_argument}}", deploy_url),
         }
     });
 
     let app = Router::new()
-        .route(
-            "/",
-            get(|| async move {
-                Response::builder()
-                    .status(StatusCode::OK)
-                    .header("Content-Type", "application/json")
-                    .body(Body::from((description).to_string()))
-                    .unwrap()
-            }),
-        )
+        .route("/", get(|| async move {
+            Response::builder()
+                .status(StatusCode::OK)
+                .header("Content-Type", "application/json")
+                .body(Body::from((description).to_string()))
+                .unwrap()
+        }))
         .route("/search/{*query}", get(search_router))
         .route("/search", get(search_router))
         .route("/search/", get(search_router))
@@ -144,6 +141,7 @@ async fn main() {
 
     println!("Starting server on {}", deploy_url);
 
-    let listener = tokio::net::TcpListener::bind(deploy_url).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(&deploy_url).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
+
