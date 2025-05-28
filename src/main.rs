@@ -103,7 +103,6 @@ async fn product_router(
     .unwrap_or_else(|e| default_error_response(e))
 }
 
-let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
 
 #[tokio::main]
 async fn main() {
